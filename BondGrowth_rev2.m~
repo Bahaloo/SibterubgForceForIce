@@ -1,0 +1,317 @@
+clc;
+clear;
+% close all
+
+jj=1;
+control= 't'; % [t P r T]
+% E = 1e11/(10.4*(1+1.07e-3*T+1.87e-6*T^3));
+% ice modulus, see Higga1998 for E
+E           = 9.66e9; % E at -5C
+nu          = 0.32;     % Poisson ratio of ice
+E           = E/(2*(1-nu^2)); % effective modulus
+
+Szabo = 0;
+
+if Szabo
+    control = 't';
+    Tc = -23;
+    Pc =  2;
+    Rc = 3e-3;
+    tc = 0.0001:0.0005:0.001;
+    
+end
+if control == 't' && Szabo == 0
+    Tc = -12;
+    Pc =  10e-3;
+    Rc = 1.2e-3;
+    tc = 0.1:5:100.1;
+end
+
+if control == 'T'
+    Tc = -2:-2:-16;
+    Pc = 10e-3;
+    Rc = 1.2e-3;
+    tc = 0.1;
+end
+
+if control == 'R' || control == 'r'
+    Tc = -12;
+    Pc = 10e-3;
+    Rc = 0.25e-3:0.1e-3:2.5e-3;
+    tc = 0.1;
+end
+
+if control == 'P'
+    Tc = -12;
+    Pc = 1e-3:1e-3:15e-3;
+    Rc = 1.2e-3;
+    tc = 0.1;
+end
+
+for T           = Tc      % Temperature in centigrage
+
+for P_max   = Pc%;10e-3;%1e-3:1e-3:15e-3; % maximum load during pressing
+
+    
+t_loading   = 30*P_max/10e-3; %;    % they should be the same, sec
+
+if Szabo
+   t_loading   = (1-0.001)/2; 
+end
+for R           = Rc%1.2e-3;%0.1e-3:0.00005:2.5e-3;  % radius of first ice particle, m
+    
+    gam         = 0.2;    % surface tension of water, N/m];
+    R2          = 5e-3;  % radius of second ice particle, m
+    if Szabo
+        R2 = 3e-3;
+    end
+    t_unloading = t_loading; %sec
+    dt          = 0.001; % time interval for solution, sec
+    
+    if Szabo
+        dt = 0.0001;
+    end
+    R_eq        = R*R2/(R+R2);
+
+    %% loading phase
+    P_l(1)      = 0;     %initial external force , N
+    
+    % intital contact radius
+    a_l(1)      = (9*pi*gam*R_eq^2/(2*E))^0.333;
+    
+    %spanning time over loading phase
+    t_l         = dt:dt:t_loading;
+    
+    S = 0;
+    alpha_l = 5;
+    for i = 2:length(t_l)
+        % calculating the load at each time step
+        P_l(i) = (t_l(i)/t_loading)*P_max;
+        
+        S =  S+2*R_eq^2*(alpha_l*5.52e-6*(1e-6*1.5*P_l(i)...
+            /(pi*a_l(i-1)^2))^2.43*0.5*((t_l(i-1))^(-0.333)+t_l(i)^(-0.333))*dt);
+        
+        a_l(i) = sqrt(a_l(1)^2 + S);
+
+        ep_l = 1 - sqrt(R^2- (a_l(i))^2)/R;
+        
+        if ep_l < 0.009
+            alpha_l = (-4/0.009)*ep_l + 5;
+        else
+            alpha_l = (4/0.009)*ep_l - 3;
+        end
+
+    end
+    
+    %% holding (keep) phase
+    
+    P_k = P_l(end);
+    
+    for t_keep      =  tc;%0.1;% 0.1:5:100.1   %maximum time of holind at maximum load
+    
+    t_k = t_loading : dt : t_loading + t_keep;
+    a_k(1) = a_l(end);
+    SS = 0;
+    alpha_k = alpha_l;
+    for i = 2:length(t_k)
+        
+        SS = SS+2*R_eq^2*(alpha_k*5.52e-6*(1e-6*1.5*P_k...
+            /(pi*a_k(i-1)^2))^2.43*0.5*(t_k(i-1)^(-0.333)+t_k(i)^(-0.333))*dt);
+        
+        a_k(i) = sqrt(a_k(1)^2 + SS);
+        
+        ep_k = 1 - sqrt(R^2- (a_k(i))^2)/R;
+        
+        if ep_k < 0.009
+            alpha_k = (-4/0.009)*ep_k + 5;
+        else
+            alpha_k = (4/0.009)*ep_k - 3;
+        end
+        
+        %         a_k(i) = sqrt(a_k(i-1)^2 + ...
+        %             2*R^2*(1*5.52e-6*(1e-6*1.5*P_k(i)/(pi*a_k(i-1)^2))^2.43 ...
+        %             *dt^(-0.333)));
+    end
+    
+    t_u = t_loading + t_keep : dt : t_loading + t_keep + ...
+    t_unloading;
+    a_u(1) = a_k(end);
+    P_u(1) = P_k(end);
+    SSS = 0;
+    alpha_u = alpha_k;
+    
+    for i = 2:length(t_u)
+        % calculating the load at each time step
+        P_u(i) = P_max*((t_loading + t_keep + ...
+            t_unloading)/t_loading)*(1 - (t_u(i)/(t_loading+ ...
+            t_keep + t_unloading)));
+        
+        SSS =  SSS+2*R_eq^2*(alpha_u*5.52e-6*(1e-6*1.5*P_u(i)...
+            /(pi*a_u(i-1)^2))^2.43*0.5*((t_u(i-1))^(-0.333)+t_u(i)^(-0.333))*dt);
+        
+        a_u(i) = sqrt(a_u(1)^2 + SSS);
+        
+        ep_u = 1 - sqrt(R^2- (a_u(i))^2)/R;
+
+        if ep_u < 0.009
+            alpha_u = (-4/0.009)*ep_u + 5;
+        else
+            alpha_u = (4/0.009)*ep_u - 3;
+        end
+    end
+    
+    t = [t_l t_k t_u];
+    P = [P_l P_k P_u];
+ alpha = exp(-(133000/(3*8.314))*(-1/268.15 + 1/(T+273.15)));    
+a = [a_l a_k a_u];
+    %     number 268 in above line is the temperature at which
+    %     strain rate formula is obtained (Azizi: Cold Regions
+    %     Science and Technology, 16 ( 1989 ) 159-165)
+%     plot(t,2000000*(a) ,'LineWidth',1,'Color','k');
+%     axis('square');
+%     set(gca,'LineWidth',0.5)
+%     set(gca,'TickLabelInterpreter','latex')
+%     ylabel('$d_{bond}(\mu$m)','FontAngle','italic','Interpreter','latex');
+%     ytickformat('%2.0f')
+%     set(gca,'XTick',0:10:t_loading + t_keep + ...
+%         t_unloading);xlim([0 t_loading + t_keep + 1*t_unloading])
+%     set(gca,'DefaultTextFontSize',18)
+%     set(gca, 'FontName', 'Times New Roman')
+%     xlabel('$t_{sint}(s)$ ','FontAngle','italic',...
+%         'Interpreter','latex');
+%     set(gca,'FontSize',18)
+%     set(gca,'fontweight','bold')
+%     set(gca, 'FontName', 'Times New Roman')
+    
+%     S_ut = 1e6*(0.5+1.4/sqrt(1000*R));
+         S_ut = 5e6;%*((1 -1/14) -(0.5/14)*T);
+    
+    K = 4.5;
+    F_sint = alpha*pi*S_ut*a.^2/K;
+    F_s(jj) = max(F_sint);
+%     figure
+%     plot(t,1000*F_sint,'LineWidth',1,'Color','k')
+%     
+%     axis('square');
+%     set(gca,'LineWidth',0.5)
+%     
+%     set(gca,'TickLabelInterpreter','latex')
+%     ylabel('$F_{sint}$ $(m$N)','FontAngle','italic', ...
+%         'Interpreter','latex');
+%     ytickformat('%2.0f')
+%     set(gca,'DefaultTextFontSize',18)
+%     set(gca, 'FontName', 'Times New Roman')
+%     xlabel('$t_{sint}(s)$ ','FontAngle','italic', ...
+%         'Interpreter','latex');
+%     set(gca,'FontSize',18)
+%     set(gca,'fontweight','bold')
+%     set(gca, 'FontName', 'Times New Roman')
+%     set(gca,'XTick',0:10:t_loading + t_keep + 1*t_unloading); ...
+%         xlim([0 t_loading + t_keep + 1*t_unloading])
+%     set(gca,'YTick',0*min(F_sint):2:2+floor(1000*max(F_sint)));
+%     ylim([0 2+floor(1000*max(F_sint))])
+    
+    rr(jj) = R_eq;
+    tt(jj) = t_keep;
+    PP(jj) = P_max;
+    TT(jj) = T;
+    jj = jj+1;
+    
+    end
+    end
+end
+end
+
+if control == 'T'
+    
+    figure
+    plot(-TT,1000*F_s,'LineWidth',1,'Color','k')
+    
+    axis('square');
+    set(gca,'LineWidth',0.5)
+    
+    set(gca,'TickLabelInterpreter','latex')
+    ylabel('$F_{sint}$(mN)','FontAngle','italic', ...
+        'Interpreter','latex');
+    ytickformat('%2.1f')
+    set(gca,'DefaultTextFontSize',18)
+    set(gca, 'FontName', 'Times New Roman')
+    xlabel('$-T(\mathrm{^o}C)$ ','FontAngle','italic', ...
+        'Interpreter','latex');
+    set(gca,'FontSize',18)
+    set(gca,'fontweight','bold')
+    set(gca, 'FontName', 'Times New Roman')
+    set(gca,'XTick',0:5:-TT(end)); ...
+        xlim([0 -TT(end)])
+    set(gca,'YTick',0:floor(1000*max(F_s))/5:1+floor(1000*max(F_s)));
+    ylim([0 1+floor(1000*max(F_s))])
+    
+elseif control == 'P'
+    figure
+    plot(1000*PP,1000*F_s,'LineWidth',1,'Color','k')
+    
+    axis('square');
+    set(gca,'LineWidth',0.5)
+    
+    set(gca,'TickLabelInterpreter','latex')
+    ylabel('$F_{sint}$(mN)','FontAngle','italic', ...
+        'Interpreter','latex');
+    ytickformat('%2.1f')
+    set(gca,'DefaultTextFontSize',18)
+    set(gca, 'FontName', 'Times New Roman')
+    xlabel('$P$(mN) ','FontAngle','italic', ...
+        'Interpreter','latex');
+    set(gca,'FontSize',18)
+    set(gca,'fontweight','bold')
+    set(gca, 'FontName', 'Times New Roman')
+    set(gca,'XTick',0:5:1000*P_max(end)); ...
+        xlim(1000*[0 P_max(end)])
+    set(gca,'YTick',0:floor(1000*max(F_sint))/5:1+floor(1000*max(F_sint)));
+    ylim([0 1+floor(1000*max(F_sint))])
+    
+elseif control == 't'
+    figure
+    plot(t_loading+t_unloading+tt,1000*F_s,'LineWidth',1,'Color','k')
+    
+    axis('square');
+    set(gca,'LineWidth',0.5)
+    
+    set(gca,'TickLabelInterpreter','latex')
+    ylabel('$F_{sint}$(mN)','FontAngle','italic', ...
+        'Interpreter','latex');
+    ytickformat('%2.1f')
+    set(gca,'DefaultTextFontSize',18)
+    set(gca, 'FontName', 'Times New Roman')
+    xlabel('$t$(s) ','FontAngle','italic', ...
+        'Interpreter','latex');
+    set(gca,'FontSize',18)
+    set(gca,'fontweight','bold')
+    set(gca, 'FontName', 'Times New Roman')
+    set(gca,'XTick',t_loading+t_unloading:20:t_loading+t_unloading+tt(end)); ...
+        xlim([t_loading+t_unloading t_loading+t_unloading+tt(end)])
+    set(gca,'YTick',0:floor(1000*max(F_sint))/5:1+floor(1000*max(F_sint)));
+    ylim([0 1+floor(1000*max(F_sint))]);
+    
+elseif control == 'r' || 'R'
+    figure
+    plot(1000*rr,1000*F_s,'LineWidth',1,'Color','k')
+    
+    axis('square');
+    set(gca,'LineWidth',0.5)
+    
+    set(gca,'TickLabelInterpreter','latex')
+    ylabel('$F_{sint}$(mN)','FontAngle','italic', ...
+        'Interpreter','latex');
+    ytickformat('%2.0f')
+    set(gca,'DefaultTextFontSize',18)
+    set(gca, 'FontName', 'Times New Roman')
+    xlabel('$r_{particle}$(mm) ','FontAngle','italic', ...
+        'Interpreter','latex');
+    set(gca,'FontSize',18)
+    set(gca,'fontweight','bold')
+    set(gca, 'FontName', 'Times New Roman')
+    set(gca,'XTick',0:0.5:round(1000*rr(end))); ...
+        xlim([0 round(1000*rr(end))])
+    set(gca,'YTick',0:round(1+floor(1000*max(F_sint))/4):1+floor(1000*max(F_sint)));
+    ylim([0 1+floor(1000*max(F_sint))])
+end
