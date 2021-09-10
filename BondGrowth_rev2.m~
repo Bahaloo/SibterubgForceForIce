@@ -1,23 +1,25 @@
 clc;
 clear;
-% close all
+close all
 
 jj=1;
-control= 't'; % [t P r T]
+control= 'P'; % select control from {t P r T} to solve for F_sint as a function of the selection
+
 % E = 1e11/(10.4*(1+1.07e-3*T+1.87e-6*T^3));
 % ice modulus, see Higga1998 for E
 E           = 9.66e9; % E at -5C
 nu          = 0.32;     % Poisson ratio of ice
 E           = E/(2*(1-nu^2)); % effective modulus
 
-Szabo = 0;
+Szabo = 0;       % if to check resualts with reference [2], set it as 1
+PlotBond = 0;    % if plot of a(t) ans F(t) is required, set it as 1
 
 if Szabo
     control = 't';
     Tc = -23;
     Pc =  2;
     Rc = 3e-3;
-    tc = 0.0001:0.0005:0.001;
+    tc = 0.001;
     
 end
 if control == 't' && Szabo == 0
@@ -50,17 +52,18 @@ end
 
 for T           = Tc      % Temperature in centigrage
 
-for P_max   = Pc%;10e-3;%1e-3:1e-3:15e-3; % maximum load during pressing
+for P_max   = Pc% % maximum load during pressing
 
     
-t_loading   = 30*P_max/10e-3; %;    % they should be the same, sec
+t_loading   = 21*P_max/10e-3; %; % they should be the same, sec
 
 if Szabo
    t_loading   = (1-0.001)/2; 
 end
-for R           = Rc%1.2e-3;%0.1e-3:0.00005:2.5e-3;  % radius of first ice particle, m
+for R           = Rc% radius of first ice particle, m
     
-    gam         = 0.2;    % surface tension of water, N/m];
+    gam         = 0.2;
+    % surface tension of water, N/m];
     R2          = 5e-3;  % radius of second ice particle, m
     if Szabo
         R2 = 3e-3;
@@ -167,50 +170,53 @@ a = [a_l a_k a_u];
     %     number 268 in above line is the temperature at which
     %     strain rate formula is obtained (Azizi: Cold Regions
     %     Science and Technology, 16 ( 1989 ) 159-165)
-%     plot(t,2000000*(a) ,'LineWidth',1,'Color','k');
-%     axis('square');
-%     set(gca,'LineWidth',0.5)
-%     set(gca,'TickLabelInterpreter','latex')
-%     ylabel('$d_{bond}(\mu$m)','FontAngle','italic','Interpreter','latex');
-%     ytickformat('%2.0f')
-%     set(gca,'XTick',0:10:t_loading + t_keep + ...
-%         t_unloading);xlim([0 t_loading + t_keep + 1*t_unloading])
-%     set(gca,'DefaultTextFontSize',18)
-%     set(gca, 'FontName', 'Times New Roman')
-%     xlabel('$t_{sint}(s)$ ','FontAngle','italic',...
-%         'Interpreter','latex');
-%     set(gca,'FontSize',18)
-%     set(gca,'fontweight','bold')
-%     set(gca, 'FontName', 'Times New Roman')
-    
+    if PlotBond == 1
+    plot(t,2000000*(a) ,'LineWidth',1,'Color','k');
+    axis('square');
+    set(gca,'LineWidth',0.5)
+    set(gca,'TickLabelInterpreter','latex')
+    ylabel('$d_{bond}(\mu$m)','FontAngle','italic','Interpreter','latex');
+    ytickformat('%2.0f')
+    set(gca,'XTick',0:10:t_loading + t_keep + ...
+        t_unloading);xlim([0 t_loading + t_keep + 1*t_unloading])
+    set(gca,'DefaultTextFontSize',18)
+    set(gca, 'FontName', 'Times New Roman')
+    xlabel('$t_{sint}(s)$ ','FontAngle','italic',...
+        'Interpreter','latex');
+    set(gca,'FontSize',18)
+    set(gca,'fontweight','bold')
+    set(gca, 'FontName', 'Times New Roman')
+    end
 %     S_ut = 1e6*(0.5+1.4/sqrt(1000*R));
          S_ut = 5e6;%*((1 -1/14) -(0.5/14)*T);
     
     K = 4.5;
     F_sint = alpha*pi*S_ut*a.^2/K;
     F_s(jj) = max(F_sint);
-%     figure
-%     plot(t,1000*F_sint,'LineWidth',1,'Color','k')
-%     
-%     axis('square');
-%     set(gca,'LineWidth',0.5)
-%     
-%     set(gca,'TickLabelInterpreter','latex')
-%     ylabel('$F_{sint}$ $(m$N)','FontAngle','italic', ...
-%         'Interpreter','latex');
-%     ytickformat('%2.0f')
-%     set(gca,'DefaultTextFontSize',18)
-%     set(gca, 'FontName', 'Times New Roman')
-%     xlabel('$t_{sint}(s)$ ','FontAngle','italic', ...
-%         'Interpreter','latex');
-%     set(gca,'FontSize',18)
-%     set(gca,'fontweight','bold')
-%     set(gca, 'FontName', 'Times New Roman')
-%     set(gca,'XTick',0:10:t_loading + t_keep + 1*t_unloading); ...
-%         xlim([0 t_loading + t_keep + 1*t_unloading])
-%     set(gca,'YTick',0*min(F_sint):2:2+floor(1000*max(F_sint)));
-%     ylim([0 2+floor(1000*max(F_sint))])
     
+    if PlotBond == 1
+    figure
+    plot(t,1000*F_sint,'LineWidth',1,'Color','k')
+    
+    axis('square');
+    set(gca,'LineWidth',0.5)
+    
+    set(gca,'TickLabelInterpreter','latex')
+    ylabel('$F_{sint}$ $(m$N)','FontAngle','italic', ...
+        'Interpreter','latex');
+    ytickformat('%2.0f')
+    set(gca,'DefaultTextFontSize',18)
+    set(gca, 'FontName', 'Times New Roman')
+    xlabel('$t_{sint}(s)$ ','FontAngle','italic', ...
+        'Interpreter','latex');
+    set(gca,'FontSize',18)
+    set(gca,'fontweight','bold')
+    set(gca, 'FontName', 'Times New Roman')
+    set(gca,'XTick',0:10:t_loading + t_keep + 1*t_unloading); ...
+        xlim([0 t_loading + t_keep + 1*t_unloading])
+    set(gca,'YTick',0*min(F_sint):2:2+floor(1000*max(F_sint)));
+    ylim([0 2+floor(1000*max(F_sint))])
+    end
     rr(jj) = R_eq;
     tt(jj) = t_keep;
     PP(jj) = P_max;
@@ -221,6 +227,10 @@ a = [a_l a_k a_u];
     end
 end
 end
+
+
+% =======================================================================
+% plotting
 
 if control == 'T'
     
@@ -287,9 +297,12 @@ elseif control == 't'
     set(gca,'FontSize',18)
     set(gca,'fontweight','bold')
     set(gca, 'FontName', 'Times New Roman')
-    set(gca,'XTick',t_loading+t_unloading:20:t_loading+t_unloading+tt(end)); ...
-        xlim([t_loading+t_unloading t_loading+t_unloading+tt(end)])
-    set(gca,'YTick',0:floor(1000*max(F_sint))/5:1+floor(1000*max(F_sint)));
+    set(gca,'XTick',t_loading+t_unloading:20:t_loading+ ...
+        t_unloading+tt(end)); ...
+        xlim([t_loading+t_unloading t_loading+...
+        t_unloading+tt(end)])
+    set(gca,'YTick',0:floor(1000*max(F_sint))/5:...
+        1+floor(1000*max(F_sint)));
     ylim([0 1+floor(1000*max(F_sint))]);
     
 elseif control == 'r' || 'R'
@@ -312,6 +325,7 @@ elseif control == 'r' || 'R'
     set(gca, 'FontName', 'Times New Roman')
     set(gca,'XTick',0:0.5:round(1000*rr(end))); ...
         xlim([0 round(1000*rr(end))])
-    set(gca,'YTick',0:round(1+floor(1000*max(F_sint))/4):1+floor(1000*max(F_sint)));
+    set(gca,'YTick',0:round(1+floor(1000*max(F_sint))/4)...
+        :1+floor(1000*max(F_sint)));
     ylim([0 1+floor(1000*max(F_sint))])
 end
