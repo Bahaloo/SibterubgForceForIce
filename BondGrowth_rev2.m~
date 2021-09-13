@@ -1,15 +1,18 @@
-clc;
-clear;
-close all
+% =================================================================================================
+% =================================================================================================
+% Program to calculate bond radius and sintering force for ice
+% =================================================================================================
+clc; clear; close all
 
-jj=1;
+jj=1;           % a counter
+
 control= 'P'; % select control from {t P r T} to solve for F_sint as a function of the selection
 
 % E = 1e11/(10.4*(1+1.07e-3*T+1.87e-6*T^3));
 % ice modulus, see Higga1998 for E
-E           = 9.66e9; % E at -5C
+E           = 9.66e9; % Young's modulus E at -5C
 nu          = 0.32;     % Poisson ratio of ice
-E           = E/(2*(1-nu^2)); % effective modulus
+E           = E/(2*(1-nu^2)); % Effective modulus
 
 Szabo = 0;       % if to check resualts with reference [2], set it as 1
 PlotBond = 0;    % if plot of a(t) ans F(t) is required, set it as 1
@@ -82,7 +85,7 @@ for R           = Rc% radius of first ice particle, m
     % intital contact radius
     a_l(1)      = (9*pi*gam*R_eq^2/(2*E))^0.333;
     
-    %spanning time over loading phase
+    % spanning time over loading phase
     t_l         = dt:dt:t_loading;
     
     S = 0;
@@ -106,7 +109,7 @@ for R           = Rc% radius of first ice particle, m
 
     end
     
-    %% holding (keep) phase
+    %% keeping phase
     
     P_k = P_l(end);
     
@@ -136,6 +139,8 @@ for R           = Rc% radius of first ice particle, m
         %             *dt^(-0.333)));
     end
     
+    %% unloading phase
+    
     t_u = t_loading + t_keep : dt : t_loading + t_keep + ...
     t_unloading;
     a_u(1) = a_k(end);
@@ -163,13 +168,13 @@ for R           = Rc% radius of first ice particle, m
         end
     end
     
+    %% collecting all times from loading, keeping, and unloading,
     t = [t_l t_k t_u];
     P = [P_l P_k P_u];
- alpha = exp(-(133000/(3*8.314))*(-1/268.15 + 1/(T+273.15)));    
+    
+alpha = exp(-(133000/(3*8.314))*(-1/268.15 + 1/(T+273.15)));   % cefficient foe temperature scaling
 a = [a_l a_k a_u];
-    %     number 268 in above line is the temperature at which
-    %     strain rate formula is obtained (Azizi: Cold Regions
-    %     Science and Technology, 16 ( 1989 ) 159-165)
+
     if PlotBond == 1
     plot(t,2000000*(a) ,'LineWidth',1,'Color','k');
     axis('square');
@@ -230,7 +235,7 @@ end
 
 
 % =======================================================================
-% plotting
+% plotting F_sint results
 
 if control == 'T'
     
